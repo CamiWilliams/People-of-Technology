@@ -4,7 +4,12 @@
 
 var myDataRef;
 var path = "https://humansofcs.firebaseio.com/";
-var uploadFileCode = "<div id = 'upload_file'><input id='file-upload' type='file' accept='image/*' onchange='fileSelected = true;'>" + "<div class='input-group'>" + "<textarea id='descr-input' type='text' placeholder='Insert description here' rows='4' cols='50' onchange='descriptionAdded = true;'></textarea>" + "<p><input id='first-input' type='text' placeholder='First Name' onchange='firstAdded = true;'> <input id='last-input' type='text' placeholder='Last Name' onchange='lastAdded = true;'></p>" + "<p><input id='email-input' type='email' placeholder='Email'></p></div>" + "<button class='btn btn-default btn-sm' type='button' onclick='send()'>Submit</button>" + "<button class='btn btn-default btn-sm' type='button' onclick='cancelUpload()'>Cancel</button>" + "<div id='error' style='visibility: hidden'>*Fill out all fields*</div></div>";
+var uploadFileCode = "<div id = 'upload_file'><input id='file-upload' type='file' accept='image/*' onchange='fileSelected = true;'>"
+				   + "<div class='input-group'>" + "<textarea id='descr-input' type='text' placeholder='Insert description here' rows='4' cols='50' onchange='descriptionAdded = true;'></textarea>" 
+				   + "<p><input id='first-input' type='text' placeholder='First Name' onchange='firstAdded = true;'> <input id='last-input' type='text' placeholder='Last Name' onchange='lastAdded = true;'></p>" 
+				   + "<p><input id='email-input' type='email' placeholder='Email'></p></div>" + "<button class='btn btn-default btn-sm' type='button' onclick='send()'>Submit</button>" 
+				   + "<button class='btn btn-default btn-sm' type='button' onclick='cancelUpload()'>Cancel</button>" 
+				   + "<div id='error' style='visibility: hidden'>*Fill out all fields*</div></div>";
 var uploadButtonCode = "<button class='btn btn-default btn-lg' type='button' onclick='getReady()'> Upload Your Own! </button>" + "<div id='thanks' style='visibility: hidden'>Thanks for submitting! You will receive email confirmation soon.</div>";
 
 var fileSelected = false;
@@ -21,23 +26,21 @@ function loadContent() {
 	toFill.innerHTML = uploadButtonCode;
 
 	toFill = document.getElementById("content");
+	
 	myDataRef = new Firebase(path + "submitted/");
 	myDataRef.once('value', function(snapshot) {
 		var x = snapshot.numChildren();	
-		for(var i = 1; i <= x; i++) {
-			var dataRef = new Firebase(path + "submitted/" + i + "/");
-			dataRef.once('value', function(snapshot) {
-				if(snapshot.val() != null) {		
-					toFill.innerHTML += fill(snapshot.val().name, snapshot.val().description, snapshot.val().imageSource);	
-				}
-			});
-		}
+		snapshot.forEach(function(childSnapshot) {
+			if(childSnapshot.val() != null) {		
+				toFill.innerHTML += fill(childSnapshot.val().name, childSnapshot.val().description, childSnapshot.val().imageSource);	
+			}
+		});
 	});
 }
 
 function fill(name, description, image) {
 	return "<div class='row'> <div class='col-sm-6 col-md-4'> <div class='thumbnail'>"
- 			+ "<img src=" + image + "> <div class='caption'> <h3>" + name + "</h3>"
+ 			+ "<img src='" + image + "'> <div class='caption'> <h3>" + name + "</h3>"
 			+ "<p>" + description + "</p></div></div></div></div>";
 }
 
@@ -93,4 +96,66 @@ function handleFileSelect(evt) {
 		};
 	})(f);
 	reader.readAsDataURL(f);
+}
+
+function toReviewBoard() {
+	
+}
+
+function submittedBoard() {
+	var toFill = document.getElementById("manager-container");
+	
+	myDataRef = new Firebase(path + "submitted/");
+	myDataRef.once('value', function(snapshot) {
+		var x = snapshot.numChildren();	
+		snapshot.forEach(function(childSnapshot) {
+			if(childSnapshot.val() != null) {		
+				toFill.innerHTML += fillSubmitManager(childSnapshot.val().name, childSnapshot.val().description, childSnapshot.val().imageSource, childSnapshot.name());	
+			}
+		});
+	});
+}
+
+function fillSubmitManager(name, description, image, uniqueIdentifier) {
+	return "<div class='row'> <div class='col-sm-6 col-md-4'> <div class='thumbnail'>"
+ 			+ "<img src='" + image + "'> <div class='caption'> <h3>" + name + "</h3>"
+			+ "<p id='" + uniqueIdentifier + "'>" + description + "</p></div>"
+			+ "<button onclick='editSubmitManager("+ uniqueIdentifier +")' class='btn btn-default btn-sm'>Edit</button>"
+			+ "<button onclick='removeSubmitManager("+ uniqueIdentifier +")' class='btn btn-default btn-sm'>Remove</button></div></div></div>";
+}
+
+function editSubmitManager(id) {
+	
+	myDataRef = new Firebase(path + "submitted/" + id);
+	myDataRef.once('value', function(snapshot) {
+		var toFill = document.getElementById(id);
+		toFill.innerHTML += "<div class='input-group'>" + "<textarea id='edit-descr-input-"+ snapshot.name() +"' type='text' rows='4' cols='50'>" + snapshot.val().description + "</textarea>" 
+			+ "<button onclick='confirmEditSubmitManager("+ snapshot.name() +")' class='btn btn-default btn-sm'>Confirm</button>"
+			+ "<button onclick='cancelEditSubmitManager("+ snapshot.name() + "," + snapshot.val().description + ")' class='btn btn-default btn-sm'>Cancel</button>";
+	});
+}
+
+function confirmEditSubmitManager(id) {
+	var agree=confirm("Are you sure you want to confirm the changes you made to this submission?");
+	if (agree) {
+		myDataRef = new Firebase(path + "submitted/" + id);
+		myDataRef.child("description").set(document.getElementById("edit-descr-input-"+ id).value);
+		var toFill = document.getElementById(id);
+		toFill.innerHTML = document.getElementById("edit-descr-input-"+ id).value;
+	}
+}
+
+function cancelEditSubmitManager(id, des) {
+		var toFill = document.getElementById(id);
+		toFill.innerHTML = des;
+}
+
+function removeSubmitManager(id) {
+	var agree=confirm("Are you sure you want to remove this submission?");
+	if (agree) {
+		myDataRef = new Firebase(path + "submitted/" + id);
+		myDataRef.remove();
+		alert("Refresh page to see changes.");
+		//submittedBoard();
+	}
 }
